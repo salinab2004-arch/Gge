@@ -49,6 +49,28 @@ function getCurrentUsername() {
     return $_SESSION['username'] ?? null;
 }
 
+// Get current user role
+function getCurrentUserRole() {
+    return $_SESSION['user_role'] ?? 'user';
+}
+
+// Check if current user is admin
+function isAdmin() {
+    return getCurrentUserRole() === 'admin';
+}
+
+// Redirect if not admin
+function requireAdmin() {
+    if (!isLoggedIn()) {
+        header('Location: login.php');
+        exit();
+    }
+    if (!isAdmin()) {
+        header('Location: index.php');
+        exit();
+    }
+}
+
 // Create uploads directory if it doesn't exist
 if (!file_exists(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0755, true);

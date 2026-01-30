@@ -179,6 +179,9 @@ function formatFileSize($bytes) {
                 <h1>📁 FTP File Manager</h1>
             </div>
             <div class="header-right">
+                <?php if (isAdmin()): ?>
+                    <a href="admin.php" class="btn btn-secondary">🛡️ Admin Panel</a>
+                <?php endif; ?>
                 <span class="user-info">👤 <?php echo htmlspecialchars($username); ?></span>
                 <span class="storage-info">💾 <?php echo formatFileSize($total_storage); ?></span>
                 <a href="logout.php" class="btn btn-danger">Logout</a>

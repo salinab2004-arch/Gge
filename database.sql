@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    role ENUM('user', 'admin') DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_username (username),
     INDEX idx_email (email)
@@ -46,6 +47,6 @@ CREATE TABLE IF NOT EXISTS directories (
 
 -- Create default admin user (password: admin123)
 -- Password is hashed using PHP password_hash()
-INSERT INTO users (username, email, password) VALUES 
-('admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+INSERT INTO users (username, email, password, role) VALUES
+('admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
 ON DUPLICATE KEY UPDATE username=username;
