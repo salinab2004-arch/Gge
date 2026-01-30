@@ -21,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
             $upload_error = 'File size exceeds maximum allowed size.';
         } elseif (!in_array($file_ext, ALLOWED_EXTENSIONS)) {
             $upload_error = 'File type not allowed.';
+        } elseif (!canUploadFile($user_id, $file_size)) {
+            $upload_error = 'Storage limit exceeded. Please delete some files or contact administrator.';
         } else {
             // Generate unique filename
             $unique_filename = uniqid() . '_' . $original_filename;
@@ -151,6 +153,17 @@ $stmt->execute([$user_id]);
 $storage = $stmt->fetch(PDO::FETCH_ASSOC);
 $total_storage = $storage['total'] ?? 0;
 
+// Get storage limit
+$storage_limit = getUserStorageLimit($user_id);
+$storage_limit_formatted = getStorageLimitFormatted($storage_limit);
+
+// Calculate percentage used
+if ($storage_limit > 0) {
+    $storage_percentage = ($total_storage / $storage_limit) * 100;
+} else {
+    $storage_percentage = 0;
+}
+
 // Format file size
 function formatFileSize($bytes) {
     if ($bytes >= 1073741824) {
@@ -183,7 +196,14 @@ function formatFileSize($bytes) {
                     <a href="admin.php" class="btn btn-secondary">🛡️ Admin Panel</a>
                 <?php endif; ?>
                 <span class="user-info">👤 <?php echo htmlspecialchars($username); ?></span>
-                <span class="storage-info">💾 <?php echo formatFileSize($total_storage); ?></span>
+                <span class="storage-info" title="Storage: <?php echo formatFileSize($total_storage); ?> / <?php echo $storage_limit_formatted; ?>">
+                    💾 <?php echo formatFileSize($total_storage); ?> / <?php echo $storage_limit_formatted; ?>
+                    <?php if ($storage_limit > 0): ?>
+                        <span class="storage-bar">
+                            <span class="storage-bar-fill" style="width: <?php echo min($storage_percentage, 100); ?>%"></span>
+                        </span>
+                    <?php endif; ?>
+                </span>
                 <a href="logout.php" class="btn btn-danger">Logout</a>
             </div>
         </header>

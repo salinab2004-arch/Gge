@@ -85,8 +85,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_role'])) {
     }
 }
 
+// Handle storage limit change
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_storage'])) {
+    $user_id = (int)$_POST['user_id'];
+    $storage_limit = $_POST['storage_limit'];
+    
+    // Validate input
+    if ($storage_limit === 'unlimited') {
+        $storage_limit_bytes = 0;
+    } else {
+        $storage_value = (float)$_POST['storage_value'];
+        $storage_unit = $_POST['storage_unit'];
+        
+        // Convert to bytes
+        switch ($storage_unit) {
+            case 'GB':
+                $storage_limit_bytes = $storage_value * 1073741824;
+                break;
+            case 'MB':
+                $storage_limit_bytes = $storage_value * 1048576;
+                break;
+            default:
+                $storage_limit_bytes = $storage_value * 1073741824;
+        }
+    }
+    
+    try {
+        $stmt = $conn->prepare("UPDATE users SET storage_limit = ? WHERE id = ?");
+        $stmt->execute([$storage_limit_bytes, $user_id]);
+        $success = 'Storage limit updated successfully.';
+    } catch(PDOException $e) {
+        $error = 'Failed to update storage limit.';
+    }
+}
+
 // Get all users
-$stmt = $conn->query("SELECT id, username, email, role, created_at, 
+$stmt = $conn->query("SELECT id, username, email, role, storage_limit, created_at,
     (SELECT COUNT(*) FROM files WHERE user_id = users.id) as file_count,
     (SELECT SUM(file_size) FROM files WHERE user_id = users.id) as total_size
     FROM users ORDER BY created_at DESC");
@@ -207,7 +241,8 @@ function formatFileSize($bytes) {
                             <th>Email</th>
                             <th>Role</th>
                             <th>Files</th>
-                            <th>Storage</th>
+                            <th>Storage Used</th>
+                            <th>Storage Limit</th>
                             <th>Joined</th>
                             <th>Actions</th>
                         </tr>
@@ -225,6 +260,10 @@ function formatFileSize($bytes) {
                             </td>
                             <td><?php echo $user['file_count']; ?></td>
                             <td><?php echo formatFileSize($user['total_size'] ?? 0); ?></td>
+                            <td>
+                                <?php echo getStorageLimitFormatted($user['storage_limit']); ?>
+                                <button class="btn-link" onclick="document.getElementById('storage-modal-<?php echo $user['id']; ?>').style.display='block'">✏️</button>
+                            </td>
                             <td><?php echo date('Y-m-d', strtotime($user['created_at'])); ?></td>
                             <td>
                                 <?php if ($user['id'] !== getCurrentUserId()): ?>
@@ -237,7 +276,7 @@ function formatFileSize($bytes) {
                                         </select>
                                         <input type="hidden" name="change_role" value="1">
                                     </form>
-                                    <a href="?delete_user=<?php echo $user['id']; ?>" 
+                                    <a href="?delete_user=<?php echo $user['id']; ?>"
                                        class="btn btn-danger btn-sm"
                                        onclick="return confirm('Delete this user and all their files?')">
                                         🗑️ Delete
@@ -245,6 +284,41 @@ function formatFileSize($bytes) {
                                 <?php else: ?>
                                     <span class="text-muted">You</span>
                                 <?php endif; ?>
+                            </td>
+                        </tr>
+                        
+                        <!-- Storage Limit Modal -->
+                        <tr>
+                            <td colspan="9">
+                                <div id="storage-modal-<?php echo $user['id']; ?>" class="modal" style="display: none;">
+                                    <div class="modal-content">
+                                        <span class="close" onclick="document.getElementById('storage-modal-<?php echo $user['id']; ?>').style.display='none'">&times;</span>
+                                        <h3>Set Storage Limit for <?php echo htmlspecialchars($user['username']); ?></h3>
+                                        <form method="POST">
+                                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                            <div class="form-group">
+                                                <label>
+                                                    <input type="radio" name="storage_limit" value="limited" checked>
+                                                    Set Custom Limit:
+                                                </label>
+                                                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                                    <input type="number" name="storage_value" value="1" min="0.1" step="0.1" style="width: 100px;">
+                                                    <select name="storage_unit">
+                                                        <option value="MB">MB</option>
+                                                        <option value="GB" selected>GB</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>
+                                                    <input type="radio" name="storage_limit" value="unlimited">
+                                                    Unlimited Storage
+                                                </label>
+                                            </div>
+                                            <button type="submit" name="update_storage" class="btn btn-primary">Update Limit</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
