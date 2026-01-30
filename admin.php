@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once 'utils.php';
 requireAdmin();
 
 $conn = getDBConnection();
@@ -126,9 +127,12 @@ $stmt = $conn->query("SELECT id, username, email, role, storage_limit, created_a
     FROM users ORDER BY created_at DESC");
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Get all activities
+$all_activities = getAllActivities(100);
+
 // Get all files
-$stmt = $conn->query("SELECT f.*, u.username FROM files f 
-    JOIN users u ON f.user_id = u.id 
+$stmt = $conn->query("SELECT f.*, u.username FROM files f
+    JOIN users u ON f.user_id = u.id
     ORDER BY f.uploaded_at DESC LIMIT 100");
 $all_files = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -362,6 +366,39 @@ function formatFileSize($bytes) {
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Activity Monitoring -->
+            <div class="file-list">
+                <h3>📊 Recent System Activity</h3>
+                <table class="files-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>File</th>
+                            <th>Details</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($all_activities) > 0): ?>
+                            <?php foreach ($all_activities as $activity): ?>
+                            <tr>
+                                <td><?php echo date('Y-m-d H:i:s', strtotime($activity['created_at'])); ?></td>
+                                <td><?php echo htmlspecialchars($activity['username'] ?? 'Unknown'); ?></td>
+                                <td><span class="activity-action"><?php echo htmlspecialchars(str_replace('_', ' ', $activity['action'])); ?></span></td>
+                                <td><?php echo htmlspecialchars($activity['original_filename'] ?? '-'); ?></td>
+                                <td><?php echo htmlspecialchars($activity['details'] ?? '-'); ?></td>
+                                <td><?php echo htmlspecialchars($activity['ip_address']); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="6" class="empty-message">No activity recorded yet.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
